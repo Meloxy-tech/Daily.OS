@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  supabaseId    String?   @unique
+  email         String?   @unique
+  name          String?
+  avatar        String?
+  isGuest       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  notes         Note[]
+  tasks         Task[]
+  habits        Habit[]
+  timerSessions TimerSession[]
+  reminders     Reminder[]
+  settings      UserSettings?
+  dashboard     DashboardLayout?
+  analytics     AnalyticsSnapshot[]
+}
+
+model Note {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  content     String    @default("")
+  folder      String    @default("Inbox")
+  tags        String[]  @default([])
+  color       String    @default("#6366f1")
+  isPinned    Boolean   @default(false)
+  isFavorite  Boolean   @default(false)
+  isArchived  Boolean   @default(false)
+  isChecklist Boolean   @default(false)
+  checklist   Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority  @default(MEDIUM)
+  category    String    @default("General")
+  dueDate     DateTime?
+  isRecurring Boolean   @default(false)
+  order       Int       @default(0)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, status])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Habit {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  icon        String    @default("✨")
+  color       String    @default("#22d3ee")
+  targetDays  Int[]     @default([0, 1, 2, 3, 4, 5, 6])
+  streak      Int       @default(0)
+  bestStreak  Int       @default(0)
+  xp          Int       @default(0)
+  logs        HabitLog[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  completed Boolean  @default(true)
+
+  @@unique([habitId, date])
+}
+
+model TimerSession {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      TimerType
+  duration  Int
+  completed Boolean     @default(true)
+  startedAt DateTime
+  endedAt   DateTime?
+
+  @@index([userId])
+}
+
+enum TimerType {
+  POMODORO
+  COUNTDOWN
+  STOPWATCH
+  FOCUS
+}
+
+model Reminder {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String?
+  dueAt     DateTime
+  isDone    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model UserSettings {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme           String  @default("dark")
+  accentColor     String  @default("#22d3ee")
+  notifications   Boolean @default(true)
+  soundEnabled    Boolean @default(true)
+  widgetPrefs     Json?
+  timezone        String  @default("UTC")
+}
+
+model DashboardLayout {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  layout    Json
+  updatedAt DateTime @updatedAt
+}
+
+model AnalyticsSnapshot {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime @db.Date
+  focusMinutes  Int      @default(0)
+  tasksDone     Int      @default(0)
+  habitsDone    Int      @default(0)
+  pomodoros     Int      @default(0)
+
+  @@unique([userId, date])
+}
